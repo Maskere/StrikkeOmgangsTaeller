@@ -8,6 +8,7 @@ createApp({
         return{
             currentPDF:null,
             currentPage:1,
+            totalPages:0,
             counter:0,
             db:null,
         }
@@ -26,12 +27,20 @@ createApp({
             this.counter = savedCounter;
             console.log("Restored counter from database");
         }
+    },
+    async mounted(){
+        const savedPage = await this.getCurrentPage();
+        this.currentPage = savedPage;
 
-        const savedPageCounter = await this.getCurrentPage();
-        if(savedPageCounter){
-            this.currentPage = savedPageCounter;
-            console.log("Restored current page from database");
-        }
+        const checkAndScroll = setInterval( () => {
+            const container = this.$refs.pdfWindow;
+            const firstPage = container?.querySelector("canvas");
+
+            if(container && firstPage){
+                container.scrollTop = (this.currentPage - 1) * firstPage.offsetHeight;
+                clearInterval(checkAndScroll);
+            }
+        }, 100);
     },
     methods:{
         initDB(){
@@ -61,7 +70,7 @@ createApp({
         },
         async saveCounter(value){
             const tx = this.db.transaction("counter", "readwrite");
-            tx.objectStore("counter").put(value, "pageCount");
+            tx.objectStore("counter").put(value, "currentCounter");
         },
         getFile(){
             return new Promise((resolve) => {
@@ -73,20 +82,16 @@ createApp({
         async getCounter(){
             return new Promise((resolve) => {
                 const tx = this.db.transaction("counter", "readonly");
-                const request = tx.objectStore("counter").get("pageCount");
+                const request = tx.objectStore("counter").get("currentCounter");
                 request.onsuccess = () => resolve(request.result || 0);
             });
         },
         async getCurrentPage(){
             return new Promise((resolve) => {
                 const tx = this.db.transaction("pageCount", "readonly");
-                const request = tx.objectStore("pageCount").get("lastPage");
-                request.onsuccess = () => resolve(request.result || 0);
-                });
-        },
-        async savePage(page){
-            const tx = this.db.transaction("pageCount", "readwrite");
-            tx.objectStore("pageCount").put(page,"lastPage");
+                const request = tx.objectStore("pageCount").get("pdfLastPage");
+                request.onsuccess = () => resolve(request.result || 1);
+            });
         },
         async getPDF(event){
             const file = event.target.files;
@@ -116,12 +121,37 @@ createApp({
         },
         handleScroll(event){
             const container = event.target;
-
             const scrollTop = container.scrollTop;
-            const pageHeight = container.scrollHeight / this.totalPages;
-            this.currentPage = Math.ceil(scrollTop / pageHeight) || 1;
+            const firstPage = container.querySelector("canvas, .vue-pdf-embed > div");
 
-            this.savePage(this.currentPage);
+            if(firstPage){
+                const pageHeight = firstPage.offsetHeight;
+
+                const newPage = Math.floor(scrollTop / pageHeight) + 1;
+
+                if(this.currentPage !== newPage){
+                    this.currentPage = newPage;
+                    this.saveLastPage(this.currentPage);
+                }
+            }
+        },
+        async saveLastPage(page){
+            const tx = this.db.transaction("pageCount", "readwrite");
+            tx.objectStore("pageCount").put(page, "pdfLastPage");
+        },
+        async onPdfRendered(){
+            const savedPage = await this.getCurrentPage();
+            this.currentPage = savedPage;
+
+            setInterval(() => {
+                const container = this.$refs.pdfWindow;
+                const firstPage = container?.querySelector("canvas");
+
+                if(container && firstPage){
+                    const pageHeight = firstPage.offsetHeight;
+                    container.scrollTop = (this.currentPage - 1) * pageHeight;
+                }
+            }, 100);
         },
     }
 }).mount("#app")

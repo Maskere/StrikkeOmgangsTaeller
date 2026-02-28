@@ -22,8 +22,9 @@
                 <button @click="incrementCounter">+</button>
             </div>
             <div v-if="currentPDF" class="pdf-container" @scroll.passive="handleScroll" ref="pdfWindow">
-                <vue-pdf-embed :source="currentPDF" :page="currentPage"/>
+                <vue-pdf-embed :source="currentPDF" @rendered="onPdfRendered"/>
             </div>
+            <div class="page-indicator">{{currentPage}}</div>
         </div>
     </body>
     <script src="index.js"></script>
