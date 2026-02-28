@@ -7,6 +7,7 @@ createApp({
     data(){
         return{
             currentPDF:null,
+            currentPage:1,
             counter:0,
             db:null,
         }
@@ -25,11 +26,17 @@ createApp({
             this.counter = savedCounter;
             console.log("Restored counter from database");
         }
+
+        const savedPageCounter = await this.getCurrentPage();
+        if(savedPageCounter){
+            this.currentPage = savedPageCounter;
+            console.log("Restored current page from database");
+        }
     },
     methods:{
         initDB(){
             return new Promise((resolve) => {
-                const request = indexedDB.open("PDFStorage", 2);
+                const request = indexedDB.open("PDFStorage", 3);
 
                 request.onupgradeneeded = (e) => {
                     const db = e.target.result;
@@ -39,6 +46,10 @@ createApp({
 
                     if(!db.objectStoreNames.contains("counter")){
                         db.createObjectStore("counter");
+                    }
+
+                    if(!db.objectStoreNames.contains("pageCount")){
+                        db.createObjectStore("pageCount");
                     }
                 };
                 request.onsuccess = (e) => resolve(e.target.result);
@@ -66,6 +77,17 @@ createApp({
                 request.onsuccess = () => resolve(request.result || 0);
             });
         },
+        async getCurrentPage(){
+            return new Promise((resolve) => {
+                const tx = this.db.transaction("pageCount", "readonly");
+                const request = tx.objectStore("pageCount").get("lastPage");
+                request.onsuccess = () => resolve(request.result || 0);
+                });
+        },
+        async savePage(page){
+            const tx = this.db.transaction("pageCount", "readwrite");
+            tx.objectStore("pageCount").put(page,"lastPage");
+        },
         async getPDF(event){
             const file = event.target.files;
             if(!file) return;
@@ -91,6 +113,15 @@ createApp({
         decreaseCounter(){
             this.counter--;
             this.saveCounter(this.counter);
+        },
+        handleScroll(event){
+            const container = event.target;
+
+            const scrollTop = container.scrollTop;
+            const pageHeight = container.scrollHeight / this.totalPages;
+            this.currentPage = Math.ceil(scrollTop / pageHeight) || 1;
+
+            this.savePage(this.currentPage);
         },
     }
 }).mount("#app")

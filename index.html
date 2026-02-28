@@ -21,8 +21,8 @@
                 {{counter}}
                 <button @click="incrementCounter">+</button>
             </div>
-            <div v-if="currentPDF" class="pdf-container">
-                <vue-pdf-embed :source="currentPDF"/>
+            <div v-if="currentPDF" class="pdf-container" @scroll.passive="handleScroll" ref="pdfWindow">
+                <vue-pdf-embed :source="currentPDF" :page="currentPage"/>
             </div>
         </div>
     </body>
