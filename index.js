@@ -29,18 +29,6 @@ createApp({
         }
     },
     async mounted(){
-        const savedPage = await this.getCurrentPage();
-        this.currentPage = savedPage;
-
-        const checkAndScroll = setInterval( () => {
-            const container = this.$refs.pdfWindow;
-            const firstPage = container?.querySelector("canvas");
-
-            if(container && firstPage){
-                container.scrollTop = (this.currentPage - 1) * firstPage.offsetHeight;
-                clearInterval(checkAndScroll);
-            }
-        }, 100);
     },
     methods:{
         initDB(){
@@ -139,17 +127,24 @@ createApp({
             const tx = this.db.transaction("pageCount", "readwrite");
             tx.objectStore("pageCount").put(page, "pdfLastPage");
         },
-        async onPdfRendered(){
+        async onPdfRendered() {
             const savedPage = await this.getCurrentPage();
             this.currentPage = savedPage;
 
-            setInterval(() => {
+            // Use a unique name for the timer so we can stop it
+            const scrollTimer = setInterval(() => {
                 const container = this.$refs.pdfWindow;
-                const firstPage = container?.querySelector("canvas");
+                // Check for canvas OR the wrapper div to be sure it's visible
+                const firstPage = container?.querySelector("canvas, .vue-pdf-embed > div");
 
-                if(container && firstPage){
+                if (container && firstPage && firstPage.offsetHeight > 0) {
                     const pageHeight = firstPage.offsetHeight;
                     container.scrollTop = (this.currentPage - 1) * pageHeight;
+
+                    console.log("Success! Scrolled to page:", this.currentPage);
+
+                    // STOP the timer so the user can scroll freely now
+                    clearInterval(scrollTimer);
                 }
             }, 100);
         },
