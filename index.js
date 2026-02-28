@@ -91,6 +91,6 @@ createApp({
         decreaseCounter(){
             this.counter--;
             this.saveCounter(this.counter);
-        }
+        },
     }
 }).mount("#app")
