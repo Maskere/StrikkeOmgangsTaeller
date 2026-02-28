@@ -1,0 +1,32 @@
+.pdf-container{
+    width: 100%;
+    height: 80dvh;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+}
+
+.counterPart{
+    position: fixed;
+
+    top: 20%;
+    left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    background: white;
+    padding: 20px;
+    border-radius: 50px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    z-index: 1000;
+
+    display:flex;
+    align-items:center;
+    gap:15px;
+}
+
+.counterPart button {
+    padding: 10px 20px;
+    cursor: pointer;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+}
