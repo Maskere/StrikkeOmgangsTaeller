@@ -15,12 +15,53 @@
             <div>
                 <input type="file" @change="getPDF" accept="application/pdf">
                 <button @click="removeCurrentPDF">Remove current PDF</button>
+                <p></p>
+                <button @click="goToNotes">Notes</button>
+                <p></p>
+                <button @click="resetCounter">Reset Counter</button>
             </div>
+
             <div class="counterPart">
                 <button @click="decreaseCounter">-</button>
                 {{counter}}
                 <button @click="incrementCounter">+</button>
             </div>
+
+            <div class="counterPartNote">
+                <button @click="addNewNote">New Note</button>
+            </div>
+            <div v-if="showNewNote">
+                <transition name="modal">
+                    <div class="modal-mask">
+                        <div class="modal-wrapper">
+                            <div class="modal-container">
+                                <div class="modal-header">
+                                    <slot name="header">
+                                        New Note
+                                    </slot>
+                                </div>
+                                <div class="modal-body">
+                                    <slot name="body">
+                                        test
+                                    </slot>
+                                </div>
+                                <div class="modal-footer">
+                                    <slot name="footer">
+                                        <input v-model="newNoteText" type="text">
+                                        <button class="modal-default-button" @click="showNewNote = false">
+                                            Cancel
+                                        </button>
+                                        <button class="modal-save-button" @click="saveNewNote(newNoteText)">
+                                            Save
+                                        </button>
+                                    </slot>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </transition>
+            </div>
+
             <div v-if="currentPDF" class="pdf-container" @scroll.passive="handleScroll" ref="pdfWindow">
                 <vue-pdf-embed :source="currentPDF" @rendered="onPdfRendered"/>
             </div>

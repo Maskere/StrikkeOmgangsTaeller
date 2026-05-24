@@ -11,6 +11,9 @@ createApp({
             totalPages:0,
             counter:0,
             db:null,
+            wakeLock: null,
+            showNewNote:false,
+            newNoteText:"",
         }
     },
     async created(){
@@ -27,13 +30,23 @@ createApp({
             this.counter = savedCounter;
             console.log("Restored counter from database");
         }
+
+        const savedNotes = await this.getNotes();
+        if(savedNotes){
+            console.log("Restores lastest notes");
+        }
     },
     async mounted(){
+        document.addEventListener("visibilitychange", async () => {
+            if(this.wakeLock !== null && document.visibilityState === "visible"){
+                await this.requestWakeLock();
+            }
+        });
     },
     methods:{
-        initDB(){
+        async initDB(){
             return new Promise((resolve) => {
-                const request = indexedDB.open("PDFStorage", 3);
+                const request = indexedDB.open("PDFStorage", 4);
 
                 request.onupgradeneeded = (e) => {
                     const db = e.target.result;
@@ -48,6 +61,10 @@ createApp({
                     if(!db.objectStoreNames.contains("pageCount")){
                         db.createObjectStore("pageCount");
                     }
+
+                    if(!db.objectStoreNames.contains("notes")){
+                        db.createObjectStore("notes");
+                    }
                 };
                 request.onsuccess = (e) => resolve(e.target.result);
             });
@@ -60,7 +77,11 @@ createApp({
             const tx = this.db.transaction("counter", "readwrite");
             tx.objectStore("counter").put(value, "currentCounter");
         },
-        getFile(){
+        async saveNote(note){
+            const tx = this.db.transaction("notes","readwrite");
+            tx.objectStore("notes").put(note,"newNote");
+        },
+        async getFile(){
             return new Promise((resolve) => {
                 const tx = this.db.transaction("files","readonly");
                 const request = tx.objectStore("files").get("lastUploadedPDF");
@@ -73,6 +94,13 @@ createApp({
                 const request = tx.objectStore("counter").get("currentCounter");
                 request.onsuccess = () => resolve(request.result || 0);
             });
+        },
+        async getNotes(){
+            return new Promise((resolve) => {
+                const tx = this.db.transaction("notes","readonly");
+                const request = tx.objectStore("notes").get("latestNewNote");
+                request.onsuccess = () => resolve(request.result);
+                });
         },
         async getCurrentPage(){
             return new Promise((resolve) => {
@@ -102,10 +130,31 @@ createApp({
         incrementCounter(){
             this.counter++;
             this.saveCounter(this.counter);
+
+            if(!this.wakeLock){
+                this.requestWakeLock();
+            }
         },
         decreaseCounter(){
             this.counter--;
             this.saveCounter(this.counter);
+        },
+        resetCounter(){
+            this.counter = 0;
+            this.saveCounter(this.counter);
+        },
+        goToNotes(){
+            window.location = "./notes.html";
+        },
+        addNewNote(){
+            this.showNewNote = !this.showNewNote;
+        },
+        async saveNewNote(newNote){
+            const tx = this.db.transaction("notes","readwrite");
+            const request = tx.objectStore("notes").put(newNote,"latestNewNote");
+            if(request){
+                window.location.reload();
+            }
         },
         handleScroll(event){
             const container = event.target;
@@ -147,6 +196,28 @@ createApp({
                     clearInterval(scrollTimer);
                 }
             }, 100);
+        },
+        async requestWakeLock(){
+            try{
+                if("wakeLock" in navigator){
+                    this.wakeLock = await navigator.wakeLock.request("screen");
+                    console.log("Screen Wake Lock is Active");
+
+                    this.wakeLock.addEventListener("release", () =>{
+                        console.log("Screen Wake Lock was released");
+                        this.wakeLock = null;
+                    });
+                }
+            }
+            catch(err){
+                console.error("${err.name}, ${err.message}");
+            }
+        },
+        releaseWakeLock(){
+            if(this.wakeLock){
+                this.wakeLock.release();
+                this.wakeLock = null;
+            }
         },
     }
 }).mount("#app")
